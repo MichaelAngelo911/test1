@@ -10,6 +10,7 @@ function UnitManager.new(unit_type)
     local new_unit = {}
     local blueprint = unit_data.blueprint
     local state = unit_data.state
+    local loadout = unit_data.loadout  -- Add loadout reference
     new_unit.gridx = state.pos.x
     new_unit.gridy = state.pos.y
     new_unit.movement_range = state.movement
@@ -18,6 +19,7 @@ function UnitManager.new(unit_type)
     new_unit.image = love.graphics.newImage(blueprint.image_path)
     new_unit.blueprint = blueprint
     new_unit.state = state
+    new_unit.loadout = loadout  -- Copy loadout to unit
     return new_unit
 end
 

@@ -70,7 +70,7 @@ local unit_stats = {
           loadout = {
             gold = 0,
             inventory = { capacity = 10, items = {} },
-            equipment = { weapon = nil, armor = nil }  -- 2 slots now, easy to grow later
+            equipment = { weapon = "long_sword", armor = nil }  -- Equipped with long sword
           },
       
           -- C) RUNTIME STATE (map/battle)
@@ -83,7 +83,7 @@ local unit_stats = {
             level = 1, exp = 0,
       
             -- Resources (store current + max for hp/mp/focus; max can be recomputed on level up/equip change)
-            hp = 10, max_hp = 10,
+            hp = 20, max_hp = 20,
             mp = 0,  max_mp = 0,
       
             statuses = {},   -- e.g., { poison={turns=2, power=3} }
@@ -129,7 +129,7 @@ local unit_stats = {
         },
         loadout = {
             inventory = { capacity = 3, items = {} },
-            equipment = { weapon = nil, armor = nil }
+            equipment = { weapon = "iron_axe", armor = nil }  -- Equipped with iron axe
         },
         state = {
             faction = "enemy",
