@@ -110,7 +110,7 @@ local unit_stats = {
             class = { id="raider", tier=1, tags={"infantry"}, move_type="ground" },
             stats = {
                 level=1,
-                str=10,
+                str=1,
                 int=10,
                 agi=10,
                 vit=10,
@@ -138,7 +138,7 @@ local unit_stats = {
             turn = { has_moved=false, has_acted=false, ap=1, ct=0 },
             level=1, exp=0,
             hp=18, max_hp=18,
-            mp=0, max_mp=0,
+            mp = 0,  max_mp = 0,
             statuses = {}, buffs = {}, debuffs = {}, cooldowns = {},
             vision = 4, zoc = true,
             rewards = { xp=20, gold=15, drops={ {id="Herb",p=35} } },

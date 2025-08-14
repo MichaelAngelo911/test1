@@ -4,6 +4,19 @@ UnitManager.data.selected_unit = nil
 UnitManager.data.valid_movement_tiles = {}
 UnitManager.data.show_movement_range = false
 
+-- safe image loader for various blueprint fields
+local function load_unit_image(blueprint)
+    local candidates = { blueprint.image_path, blueprint.sprite, blueprint.image, blueprint.icon }
+    for _, p in ipairs(candidates) do
+        if type(p) == "string" and love.filesystem.getInfo(p) then
+            return love.graphics.newImage(p)
+        end
+    end
+    -- fall back to nil (we'll draw a placeholder)
+    print("WARN: Missing image for unit: "..tostring(blueprint.name or blueprint.id))
+    return nil
+end
+
 function UnitManager.new(unit_type)
     local unit_data = UnitManager.data.unit_data[unit_type]
     if not unit_data then return nil end
@@ -14,8 +27,8 @@ function UnitManager.new(unit_type)
     new_unit.gridy = state.pos.y
     new_unit.movement_range = state.movement
     new_unit.allied = (state.faction == "player")
-    new_unit.has_acted = state.turn.has_acted
-    new_unit.image = love.graphics.newImage(blueprint.image_path)
+
+    new_unit.image = load_unit_image(blueprint)
     new_unit.blueprint = blueprint
     new_unit.state = state
     return new_unit
@@ -103,6 +116,42 @@ function UnitManager.select_unit_at(pixel_x, pixel_y)
     end
 end
 
+-- Remember a unit's pre-move position so we can revert if the player cancels the action menu
+function UnitManager.remember_pre_move(unit)
+    if unit then
+        unit._pre_move = { x = unit.gridx, y = unit.gridy }
+    end
+end
+
+-- Revert a unit to their remembered pre-move position (if any)
+function UnitManager.revert_pre_move(unit)
+    if unit and unit._pre_move then
+        unit.gridx = unit._pre_move.x
+        unit.gridy = unit._pre_move.y
+        unit.state.pos.x = unit._pre_move.x
+        unit.state.pos.y = unit._pre_move.y
+        unit._pre_move = nil
+    end
+end
+
+-- Commit the move (clear the pre-move memory). Call this when an action is chosen.
+function UnitManager.commit_post_move()
+    local unit = UnitManager.data.selected_unit
+    if unit then unit._pre_move = nil end
+end
+
+-- Cancel the post-move menu: revert the unit and re-show movement range
+function UnitManager.cancel_post_move()
+    local unit = UnitManager.data.selected_unit
+    if not unit then return end
+    UnitManager.revert_pre_move(unit)
+    UnitManager.calculate_movement_range(unit)
+    UnitManager.data.show_movement_range = true
+    local UIManager = require("src.systems.uimanager")
+    UIManager.hide_post_move_menu()
+    UIManager.show_unit_info(unit)
+end
+
 function UnitManager.move_selected_unit_to(pixel_x, pixel_y)
     local clicked_grid_x = math.floor(pixel_x / 32)
     local clicked_grid_y = math.floor(pixel_y / 32)
@@ -111,13 +160,14 @@ function UnitManager.move_selected_unit_to(pixel_x, pixel_y)
     local UIManager = require("src.systems.uimanager")
 
     if not Gamestate.is_player_phase() or not unit_to_move.allied then
-        -- If trying to move an enemy, just deselect them.
         UnitManager.data.selected_unit = nil
+        UnitManager.data.show_movement_range = false
         UIManager.hide_unit_info()
         return
     end
     
     if UnitManager.is_valid_movement_tile(clicked_grid_x, clicked_grid_y) then
+        if not unit_to_move._pre_move then UnitManager.remember_pre_move(unit_to_move) end
         unit_to_move.gridx = clicked_grid_x
         unit_to_move.gridy = clicked_grid_y
         unit_to_move.state.pos.x = clicked_grid_x
@@ -132,16 +182,6 @@ function UnitManager.move_selected_unit_to(pixel_x, pixel_y)
         UnitManager.data.show_movement_range = false
         UIManager.hide_unit_info()
     end
-end
-
--- Deselect the currently selected unit and clear related UI state
-function UnitManager.deselect_unit()
-    local UIManager = require("src.systems.uimanager")
-    UnitManager.data.selected_unit = nil
-    UnitManager.data.show_movement_range = false
-    UnitManager.data.valid_movement_tiles = {}
-    UIManager.hide_unit_info()
-    UIManager.hide_post_move_menu()
 end
 
 function UnitManager.draw()
@@ -162,9 +202,22 @@ function UnitManager.draw()
         else love.graphics.setColor(1, 0, 0, 0.8) end
         love.graphics.rectangle("line", current_unit.gridx * 32, current_unit.gridy * 32, 32, 32)
         
-        love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(current_unit.image, current_unit.gridx * 32, current_unit.gridy * 32)
+        if current_unit.image then
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.draw(current_unit.image, current_unit.gridx * 32, current_unit.gridy * 32)
+        else
+            love.graphics.setColor(0.2, 0.2, 0.2, 1)
+            love.graphics.rectangle("fill", current_unit.gridx * 32, current_unit.gridy * 32, 32, 32)
+        end
     end
+end
+
+function UnitManager.deselect_unit()
+    local UIManager = require("src.systems.uimanager")
+    UnitManager.data.selected_unit = nil
+    UnitManager.data.show_movement_range = false
+    UnitManager.data.valid_movement_tiles = {}
+    UIManager.hide_unit_info()
 end
 
 return UnitManager

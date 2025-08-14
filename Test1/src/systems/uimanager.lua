@@ -58,6 +58,11 @@ function UIManager.hide_unit_info()
 end
 
 function UIManager.handle_mouse_input(x, y, button)
+    local BattleSystem = require("src.systems.battlesystem")
+    if BattleSystem.data.state == "target_select" then
+        BattleSystem.handle_mouse_input(x, y, button)
+        return
+    end
     if button == 1 and UIManager.data.current_state == UIManager.data.UI_STATE_POST_MOVE then
         local menu = UIManager.data.post_move_menu
         if x >= menu.x and x <= menu.x + menu.width and y >= menu.y and y <= menu.y + menu.height then
@@ -68,12 +73,18 @@ function UIManager.handle_mouse_input(x, y, button)
                 UIManager.handle_menu_selection(menu.options[clicked_option])
             end
         else
-            UIManager.handle_menu_selection("Wait")
+            local UnitManager = require("src.entities.UnitManager")
+            UnitManager.cancel_post_move()
         end
     end
 end
 
 function UIManager.handle_keyboard_input(key)
+    local BattleSystem = require("src.systems.battlesystem")
+    if BattleSystem.data.state == "target_select" then
+        BattleSystem.handle_keyboard_input(key)
+        return
+    end
     if UIManager.data.current_state == UIManager.data.UI_STATE_POST_MOVE then
         local menu = UIManager.data.post_move_menu
         if key == "up" or key == "w" then
@@ -85,7 +96,8 @@ function UIManager.handle_keyboard_input(key)
         elseif key == "return" or key == "space" then
             UIManager.handle_menu_selection(menu.options[menu.selected_option])
         elseif key == "escape" then
-            UIManager.handle_menu_selection("Wait")
+            local UnitManager = require("src.entities.UnitManager")
+            UnitManager.cancel_post_move()
         end
     end
 end
@@ -96,9 +108,13 @@ function UIManager.handle_menu_selection(option)
     local unit = UnitManager.data.selected_unit
     if not unit then return end
 
+    UnitManager.commit_post_move()
     if option == "Attack" then
-        print("Attack selected!")
+        local BattleSystem = require("src.systems.battlesystem")
+        BattleSystem.begin_target_select(unit)
+        return
     end
+    
     
     unit.has_acted = true
     unit.state.turn.has_acted = true
@@ -109,8 +125,14 @@ function UIManager.draw()
     if UIManager.data.post_move_menu.visible then
         UIManager.draw_post_move_menu()
     end
+
     if UIManager.data.unit_info.visible then
         UIManager.draw_unit_info()
+    end
+
+    local BattleSystem = require("src.systems.battlesystem")
+    if BattleSystem.data.state == "target_select" then
+        BattleSystem.draw()
     end
 end
 
@@ -144,14 +166,21 @@ function UIManager.draw_unit_info()
     love.graphics.rectangle("fill", x, y, w, h)
     love.graphics.setColor(unpack(UIManager.data.colors.border))
     love.graphics.rectangle("line", x, y, w, h)
-    
+
     if info.portrait then
         love.graphics.setColor(1, 1, 1, 1)
-        love.graphics.draw(info.portrait, x + 10, y + 10)
+        love.graphics.draw(info.portrait, x + 10, y + 10, 0, 0.75, 0.75)
+    else
+        love.graphics.setColor(0.3, 0.3, 0.3, 1)
+        love.graphics.rectangle("fill", x + 10, y + 10, 80, 80)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.rectangle("line", x + 10, y + 10, 80, 80)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.print("No portrait", x + 15, y + 45)
     end
     
     love.graphics.setColor(unpack(UIManager.data.colors.text))
-    love.graphics.setFont(love.graphics.newFont(16))
+    love.graphics.setFont(love.graphics.newFont(18))
     love.graphics.printf(unit.blueprint.name, x + 100, y + 20, w - 110, "left")
     
     local hp_bar_x, hp_bar_y, hp_bar_w, hp_bar_h = x + 100, y + 50, 140, 20
@@ -182,7 +211,11 @@ function UIManager.draw_unit_info()
 end
 
 function UIManager.is_ui_active()
-    return UIManager.data.current_state ~= UIManager.data.UI_STATE_NONE
+    -- Check if any UI system is active (post-move menu, unit info, or battle target selection/preview)
+    local BattleSystem = require("src.systems.battlesystem")
+    return UIManager.data.current_state ~= UIManager.data.UI_STATE_NONE or 
+           BattleSystem.data.state == "target_select" or
+           BattleSystem.data.state == "preview"
 end
 
 return UIManager
