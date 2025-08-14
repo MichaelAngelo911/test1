@@ -134,6 +134,16 @@ function UnitManager.move_selected_unit_to(pixel_x, pixel_y)
     end
 end
 
+-- Deselect the currently selected unit and clear related UI state
+function UnitManager.deselect_unit()
+    local UIManager = require("src.systems.uimanager")
+    UnitManager.data.selected_unit = nil
+    UnitManager.data.show_movement_range = false
+    UnitManager.data.valid_movement_tiles = {}
+    UIManager.hide_unit_info()
+    UIManager.hide_post_move_menu()
+end
+
 function UnitManager.draw()
     if UnitManager.data.show_movement_range then
         love.graphics.setColor(0, 0, 1, 0.3)

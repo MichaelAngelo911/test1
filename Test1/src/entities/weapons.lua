@@ -15,3 +15,5 @@ local weapons = {
         range = 2,
     },
 }
+
+return weapons
