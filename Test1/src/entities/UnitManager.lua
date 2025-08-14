@@ -142,6 +142,7 @@ function UnitManager.deselect_unit()
     UnitManager.data.valid_movement_tiles = {}
     UIManager.hide_unit_info()
     UIManager.hide_post_move_menu()
+    UIManager.hide_attack_preview()
 end
 
 function UnitManager.draw()
